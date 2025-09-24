@@ -1,0 +1,47 @@
+# === Python cache & builds ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# === Jupyter notebooks ===
+.ipynb_checkpoints/
+output/
+*.ipynb_checkpoints
+
+# === Logs & tmp ===
+*.log
+logs/
+*.tmp
+*.swp
+
+# === Airflow ===
+dags/__pycache__/
+scheduler/
+plugins/__pycache__/
+airflow.db
+*.pid
+
+# === Docker volumes & data ===
+volumes/
+postgres/
+minio-data/
+nessie-data/
+
+# === Secrets & env ===
+.env
+*.env
+secrets.toml
+airflow.env
+
+# === VSCode / Editor stuff ===
+.vscode/
+.idea/
+
+# === System files ===
+.DS_Store
+Thumbs.db
