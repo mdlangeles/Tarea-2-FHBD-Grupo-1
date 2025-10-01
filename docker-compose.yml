@@ -1,12 +1,11 @@
-version: "3.9"
-
 # ================== CONFIG COMUNES ==================
 x-spark-common: &spark-common
-  image: bitnami/spark:latest
+  image: apache/spark:4.0.1-scala2.13-java21-python3-r-ubuntu
   volumes:
-    - ./jobs:/opt/bitnami/spark/jobs
+    - ./jobs:/op t/spark/work-dir/jobs
   networks:
     - data-stack
+
 
 x-airflow-common: &airflow-common
   build:
@@ -126,7 +125,8 @@ services:
   spark-master:
     <<: *spark-common
     container_name: spark_master_fhbd_1
-    command: bin/spark-class org.apache.spark.deploy.master.Master
+    hostname: spark-master
+    command: ["/opt/spark/bin/spark-class","org.apache.spark.deploy.master.Master","--host","spark-master"]
     ports:
       - "9090:8080"
       - "7077:7077"
@@ -138,17 +138,18 @@ services:
   spark-worker:
     <<: *spark-common
     container_name: spark_worker_fhbd_1
-    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    hostname: spark-worker
+    depends_on:
+      - spark-master
+    command: ["/opt/spark/bin/spark-class","org.apache.spark.deploy.worker.Worker","spark://spark-master:7077"]
     environment:
-      - SPARK_MODE=worker
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_MEMORY=1g
-      - SPARK_MASTER_URL=spark://spark-master:7077
       - AWS_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=admin
       - AWS_SECRET_ACCESS_KEY=password
-    depends_on:
-      - spark-master
+    ports:
+      - "8081:8081"
 
   dremio:
     platform: linux/x86_64
