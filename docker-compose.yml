@@ -1,6 +1,6 @@
 # ================== CONFIG COMUNES ==================
 x-spark-common: &spark-common
-  image: apache/spark:4.0.1-scala2.13-java21-python3-r-ubuntu
+  image: spark:3.5.3-scala2.12-java17-python3-ubuntu
   volumes:
     - ./jobs:/op t/spark/work-dir/jobs
   networks:
