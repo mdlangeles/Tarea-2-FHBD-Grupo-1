@@ -163,6 +163,21 @@ services:
       - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
     networks:
       - data-stack
+  trino:
+    image: trinodb/trino:latest
+    container_name: trino_fhbd_1
+    ports:
+      - "8181:8080"
+    networks:
+      - data-stack
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog
+      - ./trino/config:/etc/trino/config
+      - ./trino/auth:/etc/trino/auth
+    environment:
+      # 👇 definimos credenciales aquí y las inyectamos en los archivos
+      TRINO_USER: admin
+      TRINO_PASSWORD: password
 
   postgres:
     image: postgres:13
