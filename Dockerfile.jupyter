@@ -1,6 +1,13 @@
-FROM jupyter/base-notebook:latest
+FROM jupyter/base-notebook:python-3.11
 
 USER root
+
+# Instalar dependencias de Python, con versiones fijadas y en un SOLO comando
+RUN pip install --no-cache-dir \
+    boto3 \
+    "dlt>=1.4.0" \
+    "pydantic>=2.7" \
+    "typing_extensions>=4.8"
 
 # Instalar OpenJDK-17 y herramientas necesarias
 RUN apt-get update && \

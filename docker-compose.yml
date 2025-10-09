@@ -50,6 +50,7 @@ services:
     volumes:
       - ./notebooks:/workspace
       - ./dlt:/workspace/.dlt
+      - ./StackOverflowData:/data/StackOverflowData #Aquí definir bien el volumen individualmente
     environment:
       - AWS_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=admin
