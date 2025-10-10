@@ -43,6 +43,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.jupyter
+    shm_size: "2g"        
+    mem_limit: "10g"         
+    memswap_limit: "10g"       
     container_name: jupyter_notebook_fhbd_1
     image: custom-jupyter:latest
     ports:
@@ -53,8 +56,8 @@ services:
       - ./StackOverflowData:/data/StackOverflowData #Aquí definir bien el volumen individualmente
     environment:
       - AWS_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=admin
-      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
     networks:
       - data-stack
     command: >
