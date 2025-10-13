@@ -22,6 +22,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    BUCKET_URL: "s3://lakehouse/bronze/"
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
@@ -83,7 +84,7 @@ services:
       /bin/sh -c "
       minio server /data --console-address ':9001' &
       sleep 10;
-      mc alias set myminio http://localhost:9000 admin password;
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
       mc mb myminio/mybucket --ignore-existing;
       tail -f /dev/null
       "
@@ -101,8 +102,8 @@ services:
       - nessie.catalog.service.s3.default-options.access-key=urn:nessie-secret:quarkus:nessie.catalog.secrets.access-key
       - nessie.catalog.service.s3.default-options.secret-key=urn:nessie-secret:quarkus:nessie.catalog.secrets.secret-key
       - nessie.catalog.service.s3.default-options.auth-type=STATIC
-      - nessie.catalog.secrets.access-key.name=admin
-      - nessie.catalog.secrets.secret-key.secret=password
+      - nessie.catalog.secrets.access-key.name=minioadmin
+      - nessie.catalog.secrets.secret-key.secret=minioadmin
       - nessie.catalog.service.s3.default-options.region=us-east-1
       - nessie.server.authentication.enabled=false
     volumes:

@@ -1,8 +1,17 @@
+# === Airflow Providers ===
 apache-airflow-providers-apache-spark==4.11.3
 apache-airflow-providers-openlineage>=1.8.0
+
+# === Spark ===
 pyspark==3.5.5
+
+# === Data Libraries (solo las que uses en otros DAGs) ===
 numpy
 pandas
-urllib3
-boto3
+pyarrow
 sodapy
+# Nota: dlt, s3fs, fsspec, etc., ya no son necesarios aquí.
+
+# === Other Dependencies ===
+urllib3
+requests

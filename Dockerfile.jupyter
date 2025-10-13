@@ -2,29 +2,30 @@ FROM jupyter/base-notebook:python-3.11
 
 USER root
 
-# Instalar dependencias de Python, con versiones fijadas y en un SOLO comando
-RUN pip install --no-cache-dir \
-    boto3 \
-    "dlt>=1.4.0" \
-    "pydantic>=2.7" \
-    "typing_extensions>=4.8"
-
-# Instalar OpenJDK-17 y herramientas necesarias
+# Instalar OpenJDK-17
 RUN apt-get update && \
-    apt-get install -y openjdk-17-jdk wget && \
+    apt-get install -y openjdk-17-jdk && \
     apt-get clean
 
 # Configurar JAVA_HOME
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
-# Crear carpeta para jars de Spark
-RUN mkdir -p /opt/spark/jars
-
-# Descargar JARS necesarios para Spark + Hadoop + MinIO
-RUN wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.2.0/hadoop-aws-3.2.0.jar -P /opt/spark/jars/ && \
-    wget https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk/1.11.1000/aws-java-sdk-1.11.1000.jar -P /opt/spark/jars/ && \
-    wget https://repo1.maven.org/maven2/com/google/guava/guava/30.1.1-jre/guava-30.1.1-jre.jar -P /opt/spark/jars/ && \
-    wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-common/3.2.0/hadoop-common-3.2.0.jar -P /opt/spark/jars/
+# Instalar dependencias de Python con TODAS las librerías necesarias
+RUN pip install --no-cache-dir \
+    boto3 \
+    pyspark==3.5.6 \
+    pyiceberg \
+    "dlt>=1.4.0" \
+    "pydantic>=2.7" \
+    "typing_extensions>=4.8" \
+    pandas \
+    pyarrow
 
 USER ${NB_UID}
+
+# Configurar variables de entorno para Spark
+ENV SPARK_HOME=/opt/conda/lib/python3.11/site-packages/pyspark
+ENV PATH=$SPARK_HOME/bin:$PATH
+
+WORKDIR /workspace
