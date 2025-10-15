@@ -34,19 +34,16 @@ La arquitectura emplea las siguientes tecnologías:
 ### **1. Bronze**
 
 - **Objetivo**: Ingesta de datos sin transformar y almacenamiento en formato Parquet.
-- **Ejecución**: Se cargan los datos de las tablas **posts** y **users** de 2020 y 2021 utilizando DLT. Las demás tablas deben cargarse manualmente.
 - **Tecnologías**: DLT, MinIO, formato Parquet.
 
 ### **2. Silver**
 
 - **Objetivo**: Transformación y normalización de los datos históricos utilizando el formato Iceberg.
-- **Ejecución**: Los datos históricos de las tablas **posts** y **users** de 2020 y 2021 se procesan y se fusionan.
 - **Tecnologías**: Apache Spark (PySpark), Apache Iceberg.
 
 ### **3. Gold**
 
 - **Objetivo**: Agregación de datos y generación de métricas y KPIs.
-- **Ejecución**: Se generan métricas como `post_counts_by_user` y `vote_stats_per_post`.
 - **Tecnologías**: Apache Spark (PySpark), Apache Iceberg.
 
 ## **Cómo Ejecutar el Proyecto**
