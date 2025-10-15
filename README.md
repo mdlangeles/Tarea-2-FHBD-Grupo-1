@@ -65,9 +65,41 @@ Para ejecutar el proyecto en tu máquina local, sigue estos pasos:
     ```bash
     docker-compose up -d
 
+# Acceder a Minio
+
+Abre tu navegagor y navega a [http://localhost:9001](http://localhost:9001)  para acceder a la interfaz de **Minio** y ver Bucket.
+
 # 🚀 Acceder a Airflow
 
 Abre tu navegador y navega a [http://localhost:8080](http://localhost:8080) para acceder a la interfaz de **Airflow** y ejecutar el DAG.
+
+##  Configuración en **Airflow**
+
+### En **Admin → Variables**
+
+**Key:** `dlt_secrets_toml`  
+**Value:**
+
+```toml
+[destination.filesystem]
+bucket_url = "s3://lakehouse/bronze"
+
+[destination.filesystem.credentials]
+aws_access_key_id = "minioadmin"
+aws_secret_access_key = "minioadmin"
+endpoint_url = "http://minio:9000"
+region_name = "us-east-1"
+addressing_style = "path"
+```
+
+### En **Admin → Connections**
+
+**Connection Id:** `spark_default`  
+**Connection Type:** `Spark`  
+**Host:** `spark://spark-master`  
+**Port:** `7077`
+
+Listo, ahora ejecuta el pipeline en airflow.
 
 ---
 
@@ -75,9 +107,171 @@ Abre tu navegador y navega a [http://localhost:8080](http://localhost:8080) para
 
 Si el DAG de Airflow falla, puedes ejecutar manualmente los siguientes notebooks para cada etapa:
 
-- **Ingesta Bronze:** `notebooks/bronze_ingest.ipynb`  
-- **Transformación Silver:** `notebooks/silver_transform.ipynb`  
-- **Agregación Gold:** `notebooks/gold_agg.ipynb`
+- **Ingesta Bronze:** `notebooks/bronze_ingest.ipynb`
+  Para este notebook, debes tener una carpeta en tu directorio llamada **StackOverflowData**
+  Ahí debes tener tus archivos.parquet para la ejecución.
+  
+  <img width="300" height="300" alt="image" src="https://github.com/user-attachments/assets/21cac00d-d333-4f28-a5e9-64467e15acb8" />
+
+
+
+  También puedes verificar en Dremio [http://localhost:9047](http://localhost:9047). Donde:
+
+   - Le das en añadir **Data Source**.
+   - Después en **Amazon S3**
+   - En "name" le das **minio_lakehouse**
+   - En AWS Access Key le das "minioadmin"
+   - En AWS Access Secret le das "minioadmin" también
+   - Desactivas la opción "Encrypt connection"
+   - Le das a la opción "Add bucket":
+      1. lakehouse
+   - Pasas a "Advanced Options" y activas la opción "Enable compatibility mode"
+   - Ya en **Connection Properties** veras columnas "Name" y "Value".
+   - Añaderás 2, y en cada una respectivamente harás:
+      1. Name = fs.f3a.endpoint / Value = minio:9000
+      2. Name = fs.f3a.path.style.access / Value = true
+   - Una vez **Guardes** podrás consultar las tablas.
+  
+  
+- **Transformación Silver:** `notebooks/silver_transform.ipynb`.
+  Al ejecutar este notebook, ingresa a minio para verificar que se ejecutó de manera correcta y el bucket llamado "silver" se creó, ahí estárán nuestros datos.
+- **Agregación Gold:** `notebooks/gold_agg.ipynb`.
+  Ya en este punto, ingresa a trino [http://localhost:8181](http://localhost:8181)
+
+  ### **Explorar el Catálogo y los Esquemas**
+
+```sql
+SHOW CATALOGS;
+
+SHOW SCHEMAS FROM nessie;
+
+SHOW TABLES FROM nessie.silver;
+```
+
+### **Tabla posts**
+```sql
+SELECT * FROM nessie.silver.posts LIMIT 1;
+
+SELECT * 
+FROM nessie.silver.posts 
+WHERE owner_user_id = 12487679 
+LIMIT 10;
+```
+
+### **Tabla users**
+```sql
+SELECT * FROM nessie.silver.users LIMIT 1;
+
+SELECT * 
+FROM nessie.silver.users 
+WHERE user_id = 12487679 
+LIMIT 1;
+
+```
+
+### **Tabla badges**
+```sql
+SELECT * FROM nessie.silver.badges LIMIT 1;
+
+```
+
+### **Tabla badges**
+```sql
+SELECT * FROM nessie.silver.badges LIMIT 1;
+
+```
+
+## **Consultas Analíticas**
+### **Número de preguntas y respuestas por usuario**
+```sql
+SELECT 
+    p.owner_user_id AS user_id,
+    COUNT(CASE WHEN p.post_type_id = 1 THEN 1 END) AS question_count,
+    COUNT(CASE WHEN p.post_type_id = 2 THEN 1 END) AS answer_count
+FROM nessie.silver.posts AS p
+WHERE p.owner_user_id IS NOT NULL
+GROUP BY p.owner_user_id
+ORDER BY question_count DESC, answer_count DESC
+LIMIT 20;
+
+```
+
+
+### **Número de preguntas y respuestas con nombres de usuario**
+```sql
+SELECT 
+    u.user_id,
+    u.display_name,
+    COUNT(CASE WHEN p.post_type_id = 1 THEN 1 END) AS question_count,
+    COUNT(CASE WHEN p.post_type_id = 2 THEN 1 END) AS answer_count
+FROM nessie.silver.posts AS p
+JOIN nessie.silver.users AS u
+  ON p.owner_user_id = u.user_id
+GROUP BY u.user_id, u.display_name
+ORDER BY question_count DESC, answer_count DESC
+LIMIT 20;
+
+```
+
+### **Estadísticas de Insignias (Badges)**
+```sql
+SELECT 
+    b.user_id,
+    COUNT(*) AS total_badges,
+    COUNT(DISTINCT b.badge_name) AS distinct_badge_types,
+    SUM(CASE WHEN b.badge_class = 1 THEN 1 ELSE 0 END) AS gold_badges,
+    SUM(CASE WHEN b.badge_class = 2 THEN 1 ELSE 0 END) AS silver_badges,
+    SUM(CASE WHEN b.badge_class = 3 THEN 1 ELSE 0 END) AS bronze_badges,
+    MAX(b.load_date) AS fecha_cargue
+FROM nessie.silver.badges AS b
+WHERE b.user_id IS NOT NULL
+GROUP BY b.user_id
+ORDER BY total_badges DESC;
+
+
+```
+
+### **Cálculo del Engagement de Usuario**
+```sql
+SELECT 
+    u.user_id,
+    u.display_name,
+    COALESCE(p.total_posts, 0) AS total_posts,
+    COALESCE(c.total_comments, 0) AS total_comments,
+    COALESCE(b.total_badges, 0) AS total_badges,
+    (COALESCE(p.total_posts, 0) +
+     COALESCE(c.total_comments, 0) +
+     COALESCE(b.total_badges, 0)) AS engagement_score,
+    MAX(u.load_date) AS fecha_cargue
+FROM nessie.silver.users AS u
+LEFT JOIN (
+    SELECT owner_user_id AS user_id, COUNT(*) AS total_posts
+    FROM nessie.silver.posts
+    WHERE owner_user_id IS NOT NULL
+    GROUP BY owner_user_id
+) AS p ON u.user_id = p.user_id
+LEFT JOIN (
+    SELECT user_id, COUNT(*) AS total_comments
+    FROM nessie.silver.comments
+    WHERE user_id IS NOT NULL
+    GROUP BY user_id
+) AS c ON u.user_id = c.user_id
+LEFT JOIN (
+    SELECT user_id, COUNT(*) AS total_badges
+    FROM nessie.silver.badges
+    WHERE user_id IS NOT NULL
+    GROUP BY user_id
+) AS b ON u.user_id = b.user_id
+WHERE u.user_id IS NOT NULL
+GROUP BY 
+    u.user_id, 
+    u.display_name, 
+    p.total_posts, 
+    c.total_comments, 
+    b.total_badges
+ORDER BY engagement_score DESC;
+
+```
 
 ---
 
@@ -93,7 +287,6 @@ Si el DAG de Airflow falla, puedes ejecutar manualmente los siguientes notebooks
 | Servicio                          | URL / Puerto                                        | Descripción                                  |
 |-----------------------------------|-----------------------------------------------------|----------------------------------------------|
 | **Airflow Webserver**             | [http://localhost:8080](http://localhost:8080)      | Interfaz principal de Airflow                |
-| **MinIO (Interfaz)**              | [http://localhost:9000](http://localhost:9000)      | Consola de MinIO                             |
 | **MinIO (Console)**               | [http://localhost:9001](http://localhost:9001)      | Administración avanzada                      |
 | **Jupyter Notebooks**             | [http://localhost:8888](http://localhost:8888)      | Ejecución manual de notebooks                |
 | **Dremio**                        | [http://localhost:9047](http://localhost:9047)      | Consultas y análisis de datos                |
@@ -128,5 +321,3 @@ Este proyecto utiliza los siguientes servicios dentro de Docker:
 ## 🧭 Diagrama de Arquitectura
 
 <img width="1171" height="1334" alt="image" src="https://github.com/user-attachments/assets/d91a8036-9588-4590-b71b-3fbfd904fe7b" />
-
-
